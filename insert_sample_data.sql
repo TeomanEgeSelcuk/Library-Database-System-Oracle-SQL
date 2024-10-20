@@ -65,3 +65,35 @@ VALUES (1, '978-0451524935', TO_DATE('2024-05-15', 'YYYY-MM-DD'), 'N', 1);
 
 INSERT INTO Loans (Borrower_ID, ISBN, Due_Date, Return_Status, Admin_ID)
 VALUES (2, '978-0545582889', TO_DATE('2024-05-20', 'YYYY-MM-DD'), 'Y', 2);
+
+
+-- Inserting additional borrowers with overdue loans
+
+-- Inserting a new user
+INSERT INTO Users (
+    First_Name, Last_Name, Phone_Number, Email, Username, Password, Street, City, State, ZIP_Code
+)
+VALUES (
+    'Alice', 'Johnson', '555-123-4567', 'alice.johnson@example.com', 'alicej', 'alicepass', 
+    '789 Pine Rd', 'Madison', 'WI', '53703'
+);  -- Added missing semicolon
+
+-- Inserting a new borrower
+INSERT INTO Borrowers (
+    Borrower_ID, User_ID, Borrowing_Limit, Amount_Payable
+)
+VALUES (
+    3, 3, 4, 15
+);
+
+-- Inserting a new loan that is overdue
+INSERT INTO Loans (
+    Borrower_ID, ISBN, Due_Date, Return_Status, Admin_ID
+)
+VALUES (
+    3, '978-0545582889', TO_DATE('2024-09-01', 'YYYY-MM-DD'), 'N', 2
+);
+
+
+
+

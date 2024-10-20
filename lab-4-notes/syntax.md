@@ -86,3 +86,95 @@
 - `DISTINCT` and `GROUP BY` are advanced techniques to avoid duplicates and group data.
 
 ---
+
+# Tables And Their Outputs From The Sql Queries 
+
+### Table 1: Users
+
+| User_ID | First_Name | Last_Name | Phone_Number | Email                   | Username  | Street        | City        | State | ZIP_Code |
+|---------|------------|-----------|--------------|-------------------------|-----------|---------------|-------------|-------|----------|
+| 1       | John       | Doe       | 123-456-7890 | john.doe@example.com    | johndoe   | 123 Elm St    | Springfield | IL    | 62704    |
+| 2       | Jane       | Smith     | 987-654-3210 | jane.smith@example.com   | janesmith | 456 Oak Ave   | Lincoln     | NE    | 68508    |
+
+### Table 2: Borrowers
+
+| Borrower_ID | First_Name | Last_Name | Borrowing_Limit | Amount_Payable |
+|-------------|------------|-----------|------------------|-----------------|
+| 1           | John       | Doe       | 5                | 10              |
+| 2           | Jane       | Smith     | 3                | 10              |
+
+### Table 3: Administrators
+
+| Admin_ID | First_Name | Last_Name | Role              | Permissions      | Last_Login               |
+|----------|------------|-----------|-------------------|------------------|--------------------------|
+| 2        | Jane       | Smith     | Assistant Manager  | READ, WRITE      | 2024-04-15 00:00:00.000  |
+| 1        | John       | Doe       | Library Manager    | ALL              | 2024-04-01 00:00:00.000  |
+
+### Table 4: Authors
+
+| Nationality | Name            |
+|-------------|-----------------|
+| British     | George Orwell   |
+| British     | J.K. Rowling    |
+
+### Table 5: Genres
+
+| Genre_ID | Title           | Description                                                   |
+|----------|-----------------|---------------------------------------------------------------|
+| 1        | Fiction         | Literary works based on the imagination and not strictly on history or fact. |
+| 2        | Science Fiction  | Fiction dealing with futuristic concepts such as advanced science and technology. |
+
+### Table 6: Books
+
+| ISBN             | Title                                   | Copies_Available |
+|------------------|-----------------------------------------|-------------------|
+| 978-0451524935   | 1984                                   | 5                 |
+| 978-0545582889   | Harry Potter and the Sorcerer's Stone   | 10                |
+
+### Table 7: Loans
+
+| Loan_Number | Borrower_ID | ISBN             | Loan_Date             | Due_Date               | Fine_Amount |
+|-------------|-------------|------------------|-----------------------|------------------------|-------------|
+| 1           | 1           | 978-0451524935   | 2024-10-07 16:52:34.000 | 2024-05-15 00:00:00.000 | 0           |
+
+### Table 8: Book-Author Relationships
+
+| ISBN             | Title | Author_ID | Author_Name     |
+|------------------|-------|-----------|------------------|
+| 978-0451524935   | 1984  | 1         | George Orwell    |
+| 978-0545582889   | Harry Potter and the Sorcerer's Stone | 2 | J.K. Rowling     |
+
+### Table 9: Book-Genre Associations
+
+| ISBN             | Title                                   | Genre_ID | Genre_Title  |
+|------------------|-----------------------------------------|----------|--------------|
+| 978-0451524935   | 1984                                   | 1        | Fiction      |
+| 978-0451524935   | 1984                                   | 2        | Science Fiction |
+| 978-0545582889   | Harry Potter and the Sorcerer's Stone   | 1        | Fiction      |
+
+### Table 10: Active Loans (Detailed)
+
+| Loan_Number | Borrower_Name | Book_Title | Loan_Date             | Due_Date               | Return_Status |
+|-------------|---------------|------------|-----------------------|------------------------|---------------|
+| 1           | John Doe      | 1984       | 2024-10-07 16:52:34.000 | 2024-05-15 00:00:00.000 | N             |
+
+### Table 11: Active Loans (Summary)
+
+| Loan_Number | Borrower_Name | Book_Title | Loan_Date             | Due_Date               | Fine_Amount |
+|-------------|---------------|------------|-----------------------|------------------------|-------------|
+| 1           | John Doe      | 1984       | 2024-10-07 16:52:34.000 | 2024-05-15 00:00:00.000 | 0           |
+
+### Table 12: Borrower Details
+
+| Borrower_ID | First_Name | Last_Name | Email                   | Phone_Number  | Borrowing_Limit | Amount_Payable |
+|-------------|------------|-----------|-------------------------|----------------|------------------|-----------------|
+| 1           | John       | Doe       | john.doe@example.com    | 123-456-7890   | 5                | 10              |
+| 2           | Jane       | Smith     | jane.smith@example.com   | 987-654-3210   | 3                | 10              |
+
+### Table 13: Book Availability
+
+| ISBN             | Title                                   | Copies_Available | Publisher            |
+|------------------|-----------------------------------------|-------------------|----------------------|
+| 978-0451524935   | 1984                                   | 5                 | Secker & Warburg     |
+| 978-0545582889   | Harry Potter and the Sorcerer's Stone   | 10                | Bloomsbury           |
+
