@@ -191,10 +191,11 @@ while true; do
         BookGenre BG ON G.Genre_ID = BG.Genre_ID
     GROUP BY
         G.Genre_ID, G.Title
-    HAVING COUNT(BG.ISBN) > 1;  -- Genres with more than 1 book
-    "
+    HAVING COUNT(BG.ISBN) > 1;
+        "
             echo "----------------------------------------"
             ;;
+
         10)
             clear
             echo "Administrators Managing Most Books:"
@@ -264,12 +265,13 @@ while true; do
             echo "All Unique Genres:"
             echo "----------------------------------------"
             execute_query "
-    SELECT Genre_Title FROM Genres
-    UNION
-    SELECT DISTINCT G.Title FROM Genres G;
-    "
+        SELECT Title AS Genre_Title FROM Genres
+        UNION
+        SELECT DISTINCT G.Title AS Genre_Title FROM Genres G;
+        "
             echo "----------------------------------------"
             ;;
+
         14)
             clear
             echo "Books Not Borrowed in the Last Year:"
