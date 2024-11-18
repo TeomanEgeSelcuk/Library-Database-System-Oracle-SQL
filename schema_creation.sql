@@ -1,104 +1,101 @@
--- Disable substitution variable prompting
-SET DEFINE OFF;
-
 -- ========================
--- Adjusted CREATE TABLE Statements
+-- CREATE TABLE Statements
 -- ========================
 
--- Users table to store general information about all users (both Borrowers and Administrators)
+-- Users table
 CREATE TABLE Users (
-    User_ID NUMBER PRIMARY KEY,  -- Primary key for users
-    First_Name VARCHAR2(50) NOT NULL,  -- First name of the user
-    Last_Name VARCHAR2(50) NOT NULL,  -- Last name of the user
-    Phone_Number VARCHAR2(20),  -- User's contact phone number
-    Email VARCHAR2(100) UNIQUE,  -- Unique email address for the user
-    Username VARCHAR2(50) UNIQUE NOT NULL,  -- Unique username for logging in
-    Password VARCHAR2(255) NOT NULL,  -- Password for logging in
-    Street VARCHAR2(100),  -- Street address of the user
-    City VARCHAR2(50),  -- City where the user resides
-    State VARCHAR2(50),  -- State of the user's residence
-    ZIP_Code VARCHAR2(10)  -- ZIP code of the user's residence
+    User_ID NUMBER PRIMARY KEY,
+    First_Name VARCHAR2(50) NOT NULL,
+    Last_Name VARCHAR2(50) NOT NULL,
+    Phone_Number VARCHAR2(20),
+    Email VARCHAR2(100) UNIQUE,
+    Username VARCHAR2(50) UNIQUE NOT NULL,
+    Password VARCHAR2(255) NOT NULL,
+    Street VARCHAR2(100),
+    City VARCHAR2(50),
+    State VARCHAR2(50),
+    ZIP_Code VARCHAR2(10)
 );
 
--- Borrowers table to store specific information about users who borrow books
+-- Borrowers table
 CREATE TABLE Borrowers (
-    Borrower_ID NUMBER PRIMARY KEY,  -- Primary key for borrowers
-    User_ID NUMBER UNIQUE,  -- Foreign key linking to the Users table
-    Borrowing_Limit NUMBER DEFAULT 5 CHECK (Borrowing_Limit > 0),  -- Limit on the number of books that can be borrowed
-    Amount_Payable NUMBER DEFAULT 0 CHECK (Amount_Payable >= 0),  -- Outstanding fees or fines for the borrower
-    FOREIGN KEY (User_ID) REFERENCES Users(User_ID)  -- Links each borrower to a user
+    Borrower_ID NUMBER PRIMARY KEY,
+    User_ID NUMBER UNIQUE,
+    Borrowing_Limit NUMBER DEFAULT 5 CHECK (Borrowing_Limit > 0),
+    Amount_Payable NUMBER DEFAULT 0 CHECK (Amount_Payable >= 0),
+    FOREIGN KEY (User_ID) REFERENCES Users(User_ID)
 );
 
--- Administrators table to store specific information about users who manage the library system
+-- Administrators table
 CREATE TABLE Administrators (
-    Admin_ID NUMBER PRIMARY KEY,  -- Primary key for administrators
-    User_ID NUMBER UNIQUE,  -- Foreign key linking to the Users table
-    Role VARCHAR2(100) NOT NULL,  -- Role or position of the administrator
-    Permissions VARCHAR2(255),  -- Access level or permissions granted to the administrator
-    Last_Login DATE,  -- Date of the last login by the administrator
-    FOREIGN KEY (User_ID) REFERENCES Users(User_ID)  -- Links each administrator to a user
+    Admin_ID NUMBER PRIMARY KEY,
+    User_ID NUMBER UNIQUE,
+    Role VARCHAR2(100) NOT NULL,
+    Permissions VARCHAR2(255),
+    Last_Login DATE,
+    FOREIGN KEY (User_ID) REFERENCES Users(User_ID)
 );
 
--- Authors table to store information about book authors
+-- Authors table
 CREATE TABLE Authors (
-    Author_ID NUMBER PRIMARY KEY,  -- Primary key for authors
-    Name VARCHAR2(100) NOT NULL,  -- Full name of the author
-    Biography CLOB,  -- A longer field to store the author's biography
-    Date_of_Birth DATE,  -- Birth date of the author
-    Date_of_Death DATE,  -- Death date of the author (if applicable)
-    Nationality VARCHAR2(50),  -- Nationality of the author
-    Languages VARCHAR2(100)  -- Languages spoken or written by the author
+    Author_ID NUMBER PRIMARY KEY,
+    Name VARCHAR2(100) NOT NULL,
+    Biography CLOB,
+    Date_of_Birth DATE,
+    Date_of_Death DATE,
+    Nationality VARCHAR2(50),
+    Languages VARCHAR2(100)
 );
 
--- Genres table to store different book genres
+-- Genres table
 CREATE TABLE Genres (
-    Genre_ID NUMBER PRIMARY KEY,  -- Primary key for genres
-    Title VARCHAR2(50) NOT NULL UNIQUE,  -- Title of the genre (e.g., Fiction, Science Fiction)
-    Description VARCHAR2(255)  -- Description of the genre
+    Genre_ID NUMBER PRIMARY KEY,
+    Title VARCHAR2(50) NOT NULL UNIQUE,
+    Description VARCHAR2(255)
 );
 
--- Books table to store information about library books
+-- Books table
 CREATE TABLE Books (
-    ISBN VARCHAR2(20) PRIMARY KEY,  -- Primary key, unique identifier for each book
-    Title VARCHAR2(200) NOT NULL,  -- Title of the book
-    Publication_Date DATE,  -- Date when the book was published
-    Pages NUMBER CHECK (Pages > 0),  -- Number of pages in the book
-    Copies_Available NUMBER DEFAULT 1 CHECK (Copies_Available >= 0),  -- Number of copies available
-    Publisher VARCHAR2(100),  -- Name of the book's publisher
-    Admin_ID NUMBER,  -- Foreign key linking to the Administrators table (who manages the book)
-    FOREIGN KEY (Admin_ID) REFERENCES Administrators(Admin_ID)  -- Links each book to an administrator
+    ISBN VARCHAR2(20) PRIMARY KEY,
+    Title VARCHAR2(200) NOT NULL,
+    Publication_Date DATE,
+    Pages NUMBER CHECK (Pages > 0),
+    Copies_Available NUMBER DEFAULT 1 CHECK (Copies_Available >= 0),
+    Publisher VARCHAR2(100),
+    Admin_ID NUMBER,
+    FOREIGN KEY (Admin_ID) REFERENCES Administrators(Admin_ID)
 );
 
--- Loans table to store records of books that have been borrowed
-CREATE TABLE Loans (
-    Loan_Number NUMBER PRIMARY KEY,  -- Primary key for loans
-    Borrower_ID NUMBER,  -- Foreign key linking to the Borrowers table
-    ISBN VARCHAR2(20),  -- Foreign key linking to the Books table
-    Loan_Date DATE DEFAULT SYSDATE,  -- Date when the loan was created
-    Due_Date DATE,  -- Due date for returning the book
-    Return_Date DATE,  -- Date when the book was returned
-    Fine_Amount NUMBER DEFAULT 0 CHECK (Fine_Amount >= 0),  -- Fine for late returns
-    Return_Status CHAR(1) CHECK (Return_Status IN ('Y', 'N')),  -- 'Y' if returned, 'N' if not
-    Admin_ID NUMBER,  -- Foreign key linking to the Administrators table (who oversees the loan)
-    FOREIGN KEY (Borrower_ID) REFERENCES Borrowers(Borrower_ID),  -- Links each loan to a borrower
-    FOREIGN KEY (ISBN) REFERENCES Books(ISBN),  -- Links each loan to a book
-    FOREIGN KEY (Admin_ID) REFERENCES Administrators(Admin_ID)  -- Links each loan to an administrator
-);
-
--- BookAuthor table to represent the many-to-many relationship between books and authors
+-- BookAuthor table
 CREATE TABLE BookAuthor (
-    ISBN VARCHAR2(20),  -- Foreign key linking to the Books table
-    Author_ID NUMBER,  -- Foreign key linking to the Authors table
-    PRIMARY KEY (ISBN, Author_ID),  -- Composite primary key to ensure each book-author pair is unique
-    FOREIGN KEY (ISBN) REFERENCES Books(ISBN),  -- Links to a specific book
-    FOREIGN KEY (Author_ID) REFERENCES Authors(Author_ID)  -- Links to a specific author
+    ISBN VARCHAR2(20),
+    Author_ID NUMBER,
+    PRIMARY KEY (ISBN, Author_ID),
+    FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
+    FOREIGN KEY (Author_ID) REFERENCES Authors(Author_ID)
 );
 
--- BookGenre table to represent the many-to-many relationship between books and genres
+-- BookGenre table
 CREATE TABLE BookGenre (
-    ISBN VARCHAR2(20),  -- Foreign key linking to the Books table
-    Genre_ID NUMBER,  -- Foreign key linking to the Genres table
-    PRIMARY KEY (ISBN, Genre_ID),  -- Composite primary key to ensure each book-genre pair is unique
-    FOREIGN KEY (ISBN) REFERENCES Books(ISBN),  -- Links to a specific book
-    FOREIGN KEY (Genre_ID) REFERENCES Genres(Genre_ID)  -- Links to a specific genre
+    ISBN VARCHAR2(20),
+    Genre_ID NUMBER,
+    PRIMARY KEY (ISBN, Genre_ID),
+    FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
+    FOREIGN KEY (Genre_ID) REFERENCES Genres(Genre_ID)
+);
+
+-- Loans table
+CREATE TABLE Loans (
+    Loan_Number NUMBER PRIMARY KEY,
+    Borrower_ID NUMBER,
+    ISBN VARCHAR2(20),
+    Loan_Date DATE DEFAULT SYSDATE,
+    Due_Date DATE,
+    Return_Date DATE,
+    Fine_Amount NUMBER DEFAULT 0 CHECK (Fine_Amount >= 0),
+    Return_Status CHAR(1) CHECK (Return_Status IN ('Y', 'N')),
+    Admin_ID NUMBER,
+    FOREIGN KEY (Borrower_ID) REFERENCES Borrowers(Borrower_ID),
+    FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
+    FOREIGN KEY (Admin_ID) REFERENCES Administrators(Admin_ID)
 );
