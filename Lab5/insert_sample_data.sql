@@ -1,8 +1,3 @@
-
--- ========================
--- Inserting Sample Data into Tables
--- ========================
-
 -- Disable substitution variable prompting
 SET DEFINE OFF;
 
@@ -62,13 +57,6 @@ VALUES (4, 'Frank Herbert', 'American science fiction author.', TO_DATE('1920-10
 INSERT INTO Authors (Author_ID, Name, Biography, Date_of_Birth, Nationality, Languages)
 VALUES (5, 'Harper Lee', 'American novelist widely known for To Kill a Mockingbird.', TO_DATE('1926-04-28', 'YYYY-MM-DD'), 'American', 'English');
 
--- Adding more authors for testing
-INSERT INTO Authors (Author_ID, Name, Biography, Date_of_Birth, Nationality, Languages)
-VALUES (6, 'Arthur Conan Doyle', 'British writer best known for Sherlock Holmes stories.', TO_DATE('1859-05-22', 'YYYY-MM-DD'), 'British', 'English');
-
-INSERT INTO Authors (Author_ID, Name, Biography, Date_of_Birth, Nationality, Languages)
-VALUES (7, 'Gillian Flynn', 'American author and screenwriter.', TO_DATE('1971-02-24', 'YYYY-MM-DD'), 'American', 'English');
-
 -- Inserting sample genres into the Genres table
 INSERT INTO Genres (Genre_ID, Title, Description)
 VALUES (1, 'Fiction', 'Literary works based on the imagination and not strictly on history or fact.');
@@ -79,10 +67,6 @@ VALUES (2, 'Science Fiction', 'Fiction dealing with futuristic concepts such as 
 -- Adding an additional genre 'Mystery'
 INSERT INTO Genres (Genre_ID, Title, Description)
 VALUES (3, 'Mystery', 'Fiction genre involving solving a crime or unraveling secrets.');
-
--- Adding another genre 'Fantasy' for testing
-INSERT INTO Genres (Genre_ID, Title, Description)
-VALUES (4, 'Fantasy', 'Fiction with magical or supernatural elements.');
 
 -- Inserting sample books into the Books table
 INSERT INTO Books (ISBN, Title, Publication_Date, Pages, Copies_Available, Publisher, Admin_ID)
@@ -107,76 +91,47 @@ VALUES ('978-1234567890', 'The Hound of the Baskervilles', TO_DATE('1902-04-01',
 INSERT INTO Books (ISBN, Title, Publication_Date, Pages, Copies_Available, Publisher, Admin_ID)
 VALUES ('978-0987654321', 'Gone Girl', TO_DATE('2012-06-05', 'YYYY-MM-DD'), 422, 4, 'Crown Publishing Group', 2);
 
--- Adding more books to ensure data for queries
-INSERT INTO Books (ISBN, Title, Publication_Date, Pages, Copies_Available, Publisher, Admin_ID)
-VALUES ('978-0747532743', 'Harry Potter and the Chamber of Secrets', TO_DATE('1998-07-02', 'YYYY-MM-DD'), 341, 8, 'Bloomsbury', 2);
-
-INSERT INTO Books (ISBN, Title, Publication_Date, Pages, Copies_Available, Publisher, Admin_ID)
-VALUES ('978-0553283686', 'Foundation', TO_DATE('1951-05-01', 'YYYY-MM-DD'), 255, 5, 'Gnome Press', 1);
-
 -- Inserting relationships between books and authors into the BookAuthor table
 INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0451524935', 1);  -- '1984' by George Orwell
+VALUES ('978-0451524935', 1);
 
 INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0545582889', 2);  -- 'Harry Potter and the Sorcerer''s Stone' by J.K. Rowling
+VALUES ('978-0545582889', 2);
 
 INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0747532743', 2);  -- 'Harry Potter and the Chamber of Secrets' by J.K. Rowling
+VALUES ('978-0060850524', 3);
 
 INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0060850524', 3);  -- 'Brave New World' by Aldous Huxley
+VALUES ('978-0441013593', 4);
 
 INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0441013593', 4);  -- 'Dune' by Frank Herbert
+VALUES ('978-0061120084', 5);
+
+-- Associating the new books with authors (assuming correct author IDs)
+INSERT INTO BookAuthor (ISBN, Author_ID)
+VALUES ('978-1234567890', 1);  -- George Orwell (for demonstration purposes)
 
 INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0061120084', 5);  -- 'To Kill a Mockingbird' by Harper Lee
-
--- Associating the new books with authors
-INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-1234567890', 6);  -- 'The Hound of the Baskervilles' by Arthur Conan Doyle
-
-INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0987654321', 7);  -- 'Gone Girl' by Gillian Flynn
-
--- Adding author Isaac Asimov
-INSERT INTO Authors (Author_ID, Name, Biography, Date_of_Birth, Nationality, Languages)
-VALUES (8, 'Isaac Asimov', 'American writer and professor of biochemistry.', TO_DATE('1920-01-02', 'YYYY-MM-DD'), 'American', 'English');
-
-INSERT INTO BookAuthor (ISBN, Author_ID)
-VALUES ('978-0553283686', 8);  -- 'Foundation' by Isaac Asimov
+VALUES ('978-0987654321', 5);  -- Harper Lee (for demonstration purposes)
 
 -- Inserting relationships between books and genres into the BookGenre table
 INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0451524935', 1);  -- '1984' in 'Fiction'
+VALUES ('978-0451524935', 1);
 
 INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0451524935', 2);  -- '1984' in 'Science Fiction'
+VALUES ('978-0451524935', 2);
 
 INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0545582889', 1);  -- 'Harry Potter' in 'Fiction'
+VALUES ('978-0545582889', 1);
 
 INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0545582889', 4);  -- 'Harry Potter' in 'Fantasy'
+VALUES ('978-0060850524', 2);
 
 INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0747532743', 1);  -- 'Harry Potter and the Chamber of Secrets' in 'Fiction'
+VALUES ('978-0441013593', 2);
 
 INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0747532743', 4);  -- 'Harry Potter and the Chamber of Secrets' in 'Fantasy'
-
-INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0060850524', 2);  -- 'Brave New World' in 'Science Fiction'
-
-INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0441013593', 2);  -- 'Dune' in 'Science Fiction'
-
-INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0553283686', 2);  -- 'Foundation' in 'Science Fiction'
-
-INSERT INTO BookGenre (ISBN, Genre_ID)
-VALUES ('978-0061120084', 1);  -- 'To Kill a Mockingbird' in 'Fiction'
+VALUES ('978-0061120084', 1);  -- 'Fiction' genre
 
 -- Associating the new books with 'Mystery' genre
 INSERT INTO BookGenre (ISBN, Genre_ID)
@@ -192,65 +147,17 @@ VALUES (1, 1, '978-0451524935', TO_DATE('2024-05-15', 'YYYY-MM-DD'), TO_DATE('20
 INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
 VALUES (2, 2, '978-0545582889', TO_DATE('2024-05-20', 'YYYY-MM-DD'), TO_DATE('2024-06-04', 'YYYY-MM-DD'), 'Y', 2);
 
--- Creating a loan for 'Dune' that was over a year ago
+-- Creating a loan for 'Dune' that was over a year ago (so it appears in Query 14)
 INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
-VALUES (3, 1, '978-0441013593', ADD_MONTHS(SYSDATE, -15), ADD_MONTHS(SYSDATE, -13), 'Y', 1);
-
--- Adding Users Who Returned Books Late and Paid Fines
-
--- Inserting a new user who returned a book late and paid the fine
-INSERT INTO Users (User_ID, First_Name, Last_Name, Phone_Number, Email, Username, Password, Street, City, State, ZIP_Code)
-VALUES (4, 'Bob', 'Brown', '111-222-3333', 'bob.brown@example.com', 'bobbrown', 'password456', '101 Maple St', 'Columbus', 'OH', '43215');
-
--- Inserting the user into the Borrowers table
-INSERT INTO Borrowers (Borrower_ID, User_ID, Borrowing_Limit, Amount_Payable)
-VALUES (4, 4, 5, 0);
-
--- Inserting a loan where the book was returned late
-INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Date, Fine_Amount, Return_Status, Admin_ID)
-VALUES (4, 4, '978-0451524935', TO_DATE('2024-05-01', 'YYYY-MM-DD'), TO_DATE('2024-05-15', 'YYYY-MM-DD'), TO_DATE('2024-05-20', 'YYYY-MM-DD'), 5, 'Y', 1);
-
--- Updating the Amount_Payable to reflect the fine
-UPDATE Borrowers SET Amount_Payable = Amount_Payable + 5 WHERE Borrower_ID = 4;
-
--- Simulating payment of the fine
-UPDATE Borrowers SET Amount_Payable = 0 WHERE Borrower_ID = 4;
-
--- Adding another user who returned a book late and paid the fine
-INSERT INTO Users (User_ID, First_Name, Last_Name, Phone_Number, Email, Username, Password, Street, City, State, ZIP_Code)
-VALUES (5, 'Sara', 'Connor', '222-333-4444', 'sara.connor@example.com', 'saraconnor', 'terminator', '2020 Future Rd', 'Los Angeles', 'CA', '90001');
-
--- Inserting the user into the Borrowers table
-INSERT INTO Borrowers (Borrower_ID, User_ID, Borrowing_Limit, Amount_Payable)
-VALUES (5, 5, 5, 0);
-
--- Inserting a loan where the book was returned late
-INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Date, Fine_Amount, Return_Status, Admin_ID)
-VALUES (5, 5, '978-0060850524', TO_DATE('2024-04-10', 'YYYY-MM-DD'), TO_DATE('2024-04-25', 'YYYY-MM-DD'), TO_DATE('2024-05-05', 'YYYY-MM-DD'), 10, 'Y', 2);
-
--- Updating the Amount_Payable to reflect the fine
-UPDATE Borrowers SET Amount_Payable = Amount_Payable + 10 WHERE Borrower_ID = 5;
-
--- Simulating payment of the fine
-UPDATE Borrowers SET Amount_Payable = 0 WHERE Borrower_ID = 5;
-
--- Adding more loans to have data for Query 7 (Top 5 Most Borrowed Authors)
-
--- Loaning more books by J.K. Rowling
-INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
-VALUES (6, 2, '978-0747532743', TO_DATE('2024-05-25', 'YYYY-MM-DD'), TO_DATE('2024-06-10', 'YYYY-MM-DD'), 'Y', 2);
-
--- Loaning books by Isaac Asimov
-INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
-VALUES (7, 3, '978-0553283686', TO_DATE('2024-05-20', 'YYYY-MM-DD'), TO_DATE('2024-06-05', 'YYYY-MM-DD'), 'Y', 1);
-
--- Loaning 'Gone Girl' by Gillian Flynn
-INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
-VALUES (8, 4, '978-0987654321', TO_DATE('2024-06-01', 'YYYY-MM-DD'), TO_DATE('2024-06-15', 'YYYY-MM-DD'), 'N', 2);
-
--- Loaning 'The Hound of the Baskervilles' by Arthur Conan Doyle
-INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
-VALUES (9, 5, '978-1234567890', TO_DATE('2024-06-05', 'YYYY-MM-DD'), TO_DATE('2024-06-20', 'YYYY-MM-DD'), 'N', 1);
+VALUES (
+    3, 
+    1, 
+    '978-0441013593', 
+    ADD_MONTHS(SYSDATE, -15),  -- Loaned 15 months ago
+    ADD_MONTHS(SYSDATE, -13),  -- Due 13 months ago
+    'Y', 
+    1
+);
 
 -- Re-enable substitution variables if needed elsewhere
 SET DEFINE ON;
