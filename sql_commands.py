@@ -296,7 +296,8 @@ def add_record(connection):
                 "4. Add User",
                 "5. Add Administrator",    # <--- New Option
                 "6. Add Genre",           # <--- New Option
-                "7. Back to Main Menu",
+                "7. Add Loan",
+                "8. Back to Main Menu",
                 "----------------------------------------"
             ]),
             title="Add Menu",
@@ -325,6 +326,8 @@ def add_record(connection):
         elif choice == 6:
             add_genre(connection)            # <--- New Function
         elif choice == 7:
+            add_loan(connection)
+        elif:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
