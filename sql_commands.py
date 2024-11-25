@@ -1549,7 +1549,7 @@ def show_menu():
             "17. Update Records",
             "18. Delete Records",
             "19. Relational Algebra",
-            "20. exit"
+            "20. exit",
             "----------------------------------------"
         ]),
         title="Main Menu",
