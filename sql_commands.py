@@ -301,15 +301,15 @@ def add_record(connection):
                 "----------------------------------------"
             ]),
             title="Add Menu",
-            subtitle="Choose an option [1-7]",
+            subtitle="Choose an option [1-8]",
             style="bold green",
             box=box.DOUBLE_EDGE
         )
         console.print(add_menu)
         try:
-            choice = IntPrompt.ask("Your choice", default=7)
+            choice = IntPrompt.ask("Your choice", default=8)
         except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 7.[/red]")
+            console.print("[red]Invalid input. Please enter a number between 1 and 8.[/red]")
             continue
 
         console.print("\n")
@@ -711,19 +711,20 @@ def update_record(connection):
                 "6. Update Book Genres",           # <--- New Option
                 "7. Update Book Authors",          # <--- New Option
                 "8. Update Genre",                 # <--- New Option
-                "9. Back to Main Menu",
+                "9. Update Loans",
+                "10. Back to Main Menu",
                 "----------------------------------------"
             ]),
             title="Update Menu",
-            subtitle="Choose an option [1-9]",
+            subtitle="Choose an option [1-10]",
             style="bold yellow",
             box=box.DOUBLE_EDGE
         )
         console.print(update_menu)
         try:
-            choice = IntPrompt.ask("Your choice", default=9)
+            choice = IntPrompt.ask("Your choice", default=10)
         except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 9.[/red]")
+            console.print("[red]Invalid input. Please enter a number between 1 and 10.[/red]")
             continue
 
         console.print("\n")
@@ -744,6 +745,8 @@ def update_record(connection):
         elif choice == 8:
             update_genre(connection)             # <--- New Function
         elif choice == 9:
+            update_loan(connection)
+        elif choice == 10:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
@@ -1322,19 +1325,20 @@ def delete_record(connection):
                 "4. Delete User",
                 "5. Delete Administrator",   # <--- New Option
                 "6. Delete Genre",          # <--- New Option
-                "7. Back to Main Menu",
+                "7. Delete Loan",
+                "8. Back to Main Menu",
                 "----------------------------------------"
             ]),
             title="Delete Menu",
-            subtitle="Choose an option [1-7]",
+            subtitle="Choose an option [1-8]",
             style="bold red",
             box=box.DOUBLE_EDGE
         )
         console.print(delete_menu)
         try:
-            choice = IntPrompt.ask("Your choice", default=7)
+            choice = IntPrompt.ask("Your choice", default=8)
         except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 7.[/red]")
+            console.print("[red]Invalid input. Please enter a number between 1 and 8.[/red]")
             continue
 
         console.print("\n")
@@ -1351,6 +1355,8 @@ def delete_record(connection):
         elif choice == 6:
             delete_genre(connection)          # <--- New Function
         elif choice == 7:
+            delete_loan(connection)          
+        elif choice == 8:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
