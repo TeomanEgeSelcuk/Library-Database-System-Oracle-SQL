@@ -327,7 +327,7 @@ def add_record(connection):
             add_genre(connection)            # <--- New Function
         elif choice == 7:
             add_loan(connection)
-        elif:
+        elif choice == 8:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
