@@ -5,11 +5,13 @@ import getpass
 import sys
 import os
 import re
+import validators
 from rich.console import Console
 from rich.prompt import Prompt, IntPrompt
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
+from datetime import datetime
 
 # Import the search module for option 15
 import search_module  # <--- New Import
@@ -102,6 +104,26 @@ def create_views(connection):
 
 def drop_views(connection):
     silent_execute(connection, "delete_all_views.sql")
+
+def validate_date_format(date_str):
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
+def validate_date_order(start_date, end_date):
+    start = datetime.strptime(start_date, '%Y-%m-%d')
+    end = datetime.strptime(end_date, '%Y-%m-%d')
+    return end >= start
+
+def validate_zip_code(zip_code):
+    us_zip_pattern = r'^\d{5}(?:-\d{4})?$'
+    ca_zip_pattern = r'^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$'
+    return re.match(us_zip_pattern, zip_code) or re.match(ca_zip_pattern, zip_code)
+
+def validate_email(email):
+    return validators.email(email)
 
 # Function to execute an inline SQL query and display results
 def execute_query(connection, query, params=None):
@@ -490,12 +512,19 @@ def add_user(connection, user_id=None):
     last_name = Prompt.ask("Enter Last Name")
     phone_number = Prompt.ask("Enter Phone Number")
     email = Prompt.ask("Enter Email")
+    while not validate_email(email):
+        console.print("[red]Invalid email format. Please enter a valid email address.[/red]")
+        email = Prompt.ask("Enter Email")
+
     username = Prompt.ask("Enter Username")
     password = Prompt.ask("Enter Password")
     street = Prompt.ask("Enter Street")
     city = Prompt.ask("Enter City")
     state = Prompt.ask("Enter State")
     zip_code = Prompt.ask("Enter ZIP Code")
+    while not validate_zip_code(zip_code):
+        console.print("[red]Invalid ZIP Code format. Please enter a valid US or Canadian ZIP Code.[/red]")
+        zip_code = Prompt.ask("Enter ZIP Code")
 
     query = """
     INSERT INTO Users (User_ID, First_Name, Last_Name, Phone_Number, Email, Username, Password, Street, City, State, ZIP_Code)
@@ -581,6 +610,89 @@ def add_genre(connection):
     except cx_Oracle.DatabaseError as e:
         error, = e.args
         console.print(f"[red]Failed to add genre: {error.message}[/red]")
+
+def add_loan(connection):
+    console.print("[bold underline]Add New Loan[/bold underline]")
+    loan_number = Prompt.ask("Enter Loan Number")
+
+    # Check if Loan Number already exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Loans WHERE Loan_Number = :loan_number", loan_number=loan_number)
+    if cursor.fetchone():
+        console.print(f"[red]Loan Number {loan_number} already exists. Please use a different Loan Number.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    borrower_id = Prompt.ask("Enter Borrower ID")
+    # Check if Borrower ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Borrowers WHERE Borrower_ID = :borrower_id", borrower_id=borrower_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]Borrower ID {borrower_id} does not exist.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    isbn = Prompt.ask("Enter ISBN")
+    # Check if ISBN exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Books WHERE ISBN = :isbn", isbn=isbn)
+    if cursor.fetchone() is None:
+        console.print(f"[red]ISBN {isbn} does not exist.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    admin_id = Prompt.ask("Enter Admin ID")
+    # Check if Admin ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]Admin ID {admin_id} does not exist.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    loan_date = Prompt.ask("Enter Loan Date (YYYY-MM-DD)", default=None)
+    due_date = Prompt.ask("Enter Due Date (YYYY-MM-DD)")
+    return_status = Prompt.ask("Enter Return Status (Y/N)", choices=['Y', 'N'], default='N')
+
+    # Validate dates
+    if not due_date:
+        console.print("[red]Due Date is required.[/red]")
+        return
+
+    if loan_date:
+        if not validate_date_format(loan_date):
+            console.print("[red]Invalid Loan Date format.[/red]")
+            return
+    else:
+        loan_date = None
+
+    if not validate_date_format(due_date):
+        console.print("[red]Invalid Due Date format.[/red]")
+        return
+
+    if loan_date and not validate_date_order(loan_date, due_date):
+        console.print("[red]Due Date cannot be earlier than Loan Date.[/red]")
+        return
+
+    query = """
+    INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
+    VALUES (:loan_number, :borrower_id, :isbn, TO_DATE(:loan_date, 'YYYY-MM-DD'), TO_DATE(:due_date, 'YYYY-MM-DD'), :return_status, :admin_id)
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, loan_number=loan_number, borrower_id=borrower_id, isbn=isbn,
+                       loan_date=loan_date, due_date=due_date, return_status=return_status, admin_id=admin_id)
+        connection.commit()
+        console.print("[green]Loan added successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to add loan: {error.message}[/red]")
+
 
 def update_record(connection):
     while True:
@@ -694,6 +806,112 @@ def update_book(connection):
     except cx_Oracle.DatabaseError as e:
         error, = e.args
         console.print(f"[red]Failed to update book: {error.message}[/red]")
+
+def update_loan(connection):
+    console.print("[bold underline]Update Loan[/bold underline]")
+    loan_number = Prompt.ask("Enter Loan Number to update")
+
+    # Fetch current data
+    query = "SELECT Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Date, Fine_Amount, Return_Status, Admin_ID FROM Loans WHERE Loan_Number = :loan_number"
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, loan_number=loan_number)
+        result = cursor.fetchone()
+        if not result:
+            console.print("[red]Loan not found.[/red]")
+            cursor.close()
+            return
+        (current_borrower_id, current_isbn, current_loan_date, current_due_date, current_return_date,
+         current_fine_amount, current_return_status, current_admin_id) = result
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Error fetching loan: {error.message}[/red]")
+        return
+
+    # Prompt for new data
+    borrower_id = Prompt.ask(f"Enter new Borrower ID (current: {current_borrower_id})", default=str(current_borrower_id))
+    # Check if Borrower ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Borrowers WHERE Borrower_ID = :borrower_id", borrower_id=borrower_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]Borrower ID {borrower_id} does not exist.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    isbn = Prompt.ask(f"Enter new ISBN (current: {current_isbn})", default=current_isbn)
+    # Check if ISBN exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Books WHERE ISBN = :isbn", isbn=isbn)
+    if cursor.fetchone() is None:
+        console.print(f"[red]ISBN {isbn} does not exist.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    loan_date = Prompt.ask(f"Enter new Loan Date (YYYY-MM-DD) (current: {current_loan_date.strftime('%Y-%m-%d') if current_loan_date else 'N/A'})",
+                           default=current_loan_date.strftime('%Y-%m-%d') if current_loan_date else None)
+    due_date = Prompt.ask(f"Enter new Due Date (YYYY-MM-DD) (current: {current_due_date.strftime('%Y-%m-%d') if current_due_date else 'N/A'})",
+                          default=current_due_date.strftime('%Y-%m-%d') if current_due_date else None)
+    return_date = Prompt.ask(f"Enter new Return Date (YYYY-MM-DD) (current: {current_return_date.strftime('%Y-%m-%d') if current_return_date else 'N/A'})",
+                             default=current_return_date.strftime('%Y-%m-%d') if current_return_date else None)
+    fine_amount = Prompt.ask(f"Enter new Fine Amount (current: {current_fine_amount})", default=str(current_fine_amount))
+    return_status = Prompt.ask(f"Enter new Return Status (Y/N) (current: {current_return_status})",
+                               choices=['Y', 'N'], default=current_return_status)
+    admin_id = Prompt.ask(f"Enter new Admin ID (current: {current_admin_id})", default=str(current_admin_id))
+    # Check if Admin ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]Admin ID {admin_id} does not exist.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    # Validate dates
+    if loan_date and not validate_date_format(loan_date):
+        console.print("[red]Invalid Loan Date format.[/red]")
+        return
+    if due_date and not validate_date_format(due_date):
+        console.print("[red]Invalid Due Date format.[/red]")
+        return
+    if return_date and not validate_date_format(return_date):
+        console.print("[red]Invalid Return Date format.[/red]")
+        return
+    if loan_date and due_date and not validate_date_order(loan_date, due_date):
+        console.print("[red]Due Date cannot be earlier than Loan Date.[/red]")
+        return
+    if loan_date and return_date and not validate_date_order(loan_date, return_date):
+        console.print("[red]Return Date cannot be earlier than Loan Date.[/red]")
+        return
+
+    update_query = """
+    UPDATE Loans
+    SET Borrower_ID = :borrower_id,
+        ISBN = :isbn,
+        Loan_Date = TO_DATE(:loan_date, 'YYYY-MM-DD'),
+        Due_Date = TO_DATE(:due_date, 'YYYY-MM-DD'),
+        Return_Date = TO_DATE(:return_date, 'YYYY-MM-DD'),
+        Fine_Amount = :fine_amount,
+        Return_Status = :return_status,
+        Admin_ID = :admin_id
+    WHERE Loan_Number = :loan_number
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(update_query, borrower_id=borrower_id, isbn=isbn,
+                       loan_date=loan_date if loan_date else None,
+                       due_date=due_date if due_date else None,
+                       return_date=return_date if return_date else None,
+                       fine_amount=fine_amount, return_status=return_status,
+                       admin_id=admin_id, loan_number=loan_number)
+        connection.commit()
+        console.print("[green]Loan updated successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to update loan: {error.message}[/red]")
 
 def update_author(connection):
     console.print("[bold underline]Update Author[/bold underline]")
@@ -1161,6 +1379,24 @@ def delete_book(connection):
         error, = e.args
         console.print(f"[red]Failed to delete book: {error.message}[/red]")
 
+def delete_loan(connection):
+    console.print("[bold underline]Delete Loan[/bold underline]")
+    loan_number = Prompt.ask("Enter Loan Number to delete")
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM Loans WHERE Loan_Number = :loan_number", loan_number=loan_number)
+        if cursor.rowcount == 0:
+            console.print("[red]No loan found with the provided Loan Number.[/red]")
+        else:
+            connection.commit()
+            console.print("[green]Loan deleted successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to delete loan: {error.message}[/red]")
+
+
 def delete_author(connection):
     console.print("[bold underline]Delete Author[/bold underline]")
     author_id = Prompt.ask("Enter Author ID to delete")
@@ -1313,6 +1549,7 @@ def show_menu():
             "17. Update Records",
             "18. Delete Records",
             "19. Relational Algebra",
+            "20. exit"
             "----------------------------------------"
         ]),
         title="Main Menu",
