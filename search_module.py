@@ -40,22 +40,21 @@ def search_records(connection):
                 "2. Search Authors",
                 "3. Search Borrowers",
                 "4. Search Users",
-                "5. Search Administrators",
-                "6. Search Genres",
-                "7. Search Loans",              # <--- New Option
-                "8. Back to Main Menu",
+                "5. Search Administrators",  # <--- New Option
+                "6. Search Genres",          # <--- New Option
+                "7. Back to Main Menu",
                 "----------------------------------------"
             ]),
             title="Search Menu",
-            subtitle="Choose an option [1-8]",
+            subtitle="Choose an option [1-7]",
             style="bold cyan",
             box=box.DOUBLE_EDGE
         )
         console.print(search_menu)
         try:
-            choice = IntPrompt.ask("Your choice", default=8)
+            choice = IntPrompt.ask("Your choice", default=7)
         except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 8.[/red]")
+            console.print("[red]Invalid input. Please enter a number between 1 and 7.[/red]")
             continue
 
         console.print("\n")
@@ -68,88 +67,15 @@ def search_records(connection):
         elif choice == 4:
             search_users(connection)
         elif choice == 5:
-            search_administrators(connection)
+            search_administrators(connection)  # <--- New Function
         elif choice == 6:
-            search_genres(connection)
+            search_genres(connection)          # <--- New Function
         elif choice == 7:
-            search_loans(connection)       # <--- New Function
-        elif choice == 8:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
 
         pause()
-
-def search_loans(connection):
-    console.print("[bold underline]Search Loans[/bold underline]")
-    loan_number = Prompt.ask("Enter Loan Number to search (leave blank to skip)")
-    borrower_id = Prompt.ask("Enter Borrower ID to search (leave blank to skip)")
-    isbn = Prompt.ask("Enter ISBN to search (leave blank to skip)")
-    admin_id = Prompt.ask("Enter Admin ID to search (leave blank to skip)")
-    return_status = Prompt.ask("Enter Return Status (Y/N) to search (leave blank to skip)", choices=['Y', 'N', ''], default='')
-    date_filter = Prompt.ask("Do you want to filter by Loan Date? (y/n)", default='n').lower()
-    if date_filter == 'y':
-        date_operator = Prompt.ask("Enter operator for Loan Date [>, >=, =, <=, <]")
-        date_value = Prompt.ask("Enter Loan Date (YYYY-MM-DD)")
-    else:
-        date_operator = None
-        date_value = None
-
-    query = """
-    SELECT
-        Loan_Number,
-        Borrower_ID,
-        ISBN,
-        TO_CHAR(Loan_Date, 'YYYY-MM-DD') AS Loan_Date,
-        TO_CHAR(Due_Date, 'YYYY-MM-DD') AS Due_Date,
-        TO_CHAR(Return_Date, 'YYYY-MM-DD') AS Return_Date,
-        Fine_Amount,
-        Return_Status,
-        Admin_ID
-    FROM
-        Loans
-    WHERE
-        1=1
-    """
-    params = {}
-    if loan_number:
-        query += " AND Loan_Number = :loan_number"
-        params['loan_number'] = loan_number
-    if borrower_id:
-        query += " AND Borrower_ID = :borrower_id"
-        params['borrower_id'] = borrower_id
-    if isbn:
-        query += " AND ISBN = :isbn"
-        params['isbn'] = isbn
-    if admin_id:
-        query += " AND Admin_ID = :admin_id"
-        params['admin_id'] = admin_id
-    if return_status:
-        query += " AND Return_Status = :return_status"
-        params['return_status'] = return_status
-    if date_operator and date_value:
-        if date_operator not in ['>', '>=', '=', '<=', '<']:
-            console.print("[red]Invalid operator for Loan Date. Skipping this filter.[/red]")
-        else:
-            query += f" AND Loan_Date {date_operator} TO_DATE(:date_value, 'YYYY-MM-DD')"
-            params['date_value'] = date_value
-
-    try:
-        cursor = connection.cursor()
-        if params:
-            cursor.execute(query, params)
-        else:
-            cursor.execute(query)
-        columns = [desc[0] for desc in cursor.description]
-        table = Table(show_header=True, header_style="bold magenta", box=box.MINIMAL_DOUBLE_HEAD)
-        for col in columns:
-            table.add_column(str(col))
-        for row in cursor:
-            table.add_row(*[str(item) if item is not None else "NULL" for item in row])
-        console.print(table)
-        cursor.close()
-    except cx_Oracle.DatabaseError as e:
-        console.print(f"[red]An error occurred while searching for loans: {e}[/red]")
 
 def search_books(connection):
     console.print("[bold underline]Search Books[/bold underline]")
