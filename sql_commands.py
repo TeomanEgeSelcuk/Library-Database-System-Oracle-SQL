@@ -5,7 +5,6 @@ import getpass
 import sys
 import os
 import re
-import validators
 from rich.console import Console
 from rich.prompt import Prompt, IntPrompt
 from rich.table import Table
@@ -273,22 +272,21 @@ def add_record(connection):
                 "2. Add Author",
                 "3. Add Borrower",
                 "4. Add User",
-                "5. Add Administrator",
-                "6. Add Genre",
-                "7. Add Loan",             # <--- New Option
-                "8. Back to Main Menu",
+                "5. Add Administrator",    # <--- New Option
+                "6. Add Genre",           # <--- New Option
+                "7. Back to Main Menu",
                 "----------------------------------------"
             ]),
             title="Add Menu",
-            subtitle="Choose an option [1-8]",
+            subtitle="Choose an option [1-7]",
             style="bold green",
             box=box.DOUBLE_EDGE
         )
         console.print(add_menu)
         try:
-            choice = IntPrompt.ask("Your choice", default=8)
+            choice = IntPrompt.ask("Your choice", default=7)
         except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 8.[/red]")
+            console.print("[red]Invalid input. Please enter a number between 1 and 7.[/red]")
             continue
 
         console.print("\n")
@@ -301,17 +299,178 @@ def add_record(connection):
         elif choice == 4:
             add_user(connection)
         elif choice == 5:
-            add_administrator(connection)
+            add_administrator(connection)    # <--- New Function
         elif choice == 6:
-            add_genre(connection)
+            add_genre(connection)            # <--- New Function
         elif choice == 7:
-            add_loan(connection)       # <--- New Function
-        elif choice == 8:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
 
         pause()
+
+def add_book(connection):
+    console.print("[bold underline]Add New Book[/bold underline]")
+    isbn = Prompt.ask("Enter ISBN")
+    title = Prompt.ask("Enter Title")
+    publication_date = Prompt.ask("Enter Publication Date (YYYY-MM-DD)")
+    pages = Prompt.ask("Enter Number of Pages")
+    copies_available = Prompt.ask("Enter Number of Copies Available")
+    publisher = Prompt.ask("Enter Publisher")
+    admin_id = Prompt.ask("Enter Admin ID who is adding the book")
+
+    # Check if Admin ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]Admin ID {admin_id} does not exist. Please add the administrator first.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    # Insert into Books
+    query = """
+    INSERT INTO Books (ISBN, Title, Publication_Date, Pages, Copies_Available, Publisher, Admin_ID)
+    VALUES (:isbn, :title, TO_DATE(:publication_date, 'YYYY-MM-DD'), :pages, :copies_available, :publisher, :admin_id)
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, isbn=isbn, title=title, publication_date=publication_date,
+                       pages=pages, copies_available=copies_available, publisher=publisher, admin_id=admin_id)
+        connection.commit()
+        console.print("[green]Book added successfully to the Books table.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to add book: {error.message}[/red]")
+        return
+
+    # Now, add entries to BookAuthor and BookGenre
+    # First, handle authors
+    while True:
+        author_id = Prompt.ask("Enter Author ID to associate with this book (leave blank to finish adding authors)")
+        if not author_id:
+            break
+        # Check if author exists
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Authors WHERE Author_ID = :author_id", author_id=author_id)
+        if cursor.fetchone() is None:
+            # Author does not exist
+            console.print(f"[red]Author ID {author_id} does not exist. Please add the author first.[/red]")
+            cursor.close()
+            continue
+        cursor.close()
+        # Insert into BookAuthor
+        try:
+            cursor = connection.cursor()
+            cursor.execute("INSERT INTO BookAuthor (ISBN, Author_ID) VALUES (:isbn, :author_id)", isbn=isbn, author_id=author_id)
+            connection.commit()
+            console.print(f"[green]Associated Author ID {author_id} with the book.[/green]")
+            cursor.close()
+        except cx_Oracle.DatabaseError as e:
+            error, = e.args
+            console.print(f"[red]Failed to associate author: {error.message}[/red]")
+            continue
+
+    # Now, handle genres
+    while True:
+        genre_id = Prompt.ask("Enter Genre ID to associate with this book (leave blank to finish adding genres)")
+        if not genre_id:
+            break
+        # Check if genre exists
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Genres WHERE Genre_ID = :genre_id", genre_id=genre_id)
+        if cursor.fetchone() is None:
+            # Genre does not exist
+            console.print(f"[red]Genre ID {genre_id} does not exist. Please add the genre first.[/red]")
+            cursor.close()
+            continue
+        cursor.close()
+        # Insert into BookGenre
+        try:
+            cursor = connection.cursor()
+            cursor.execute("INSERT INTO BookGenre (ISBN, Genre_ID) VALUES (:isbn, :genre_id)", isbn=isbn, genre_id=genre_id)
+            connection.commit()
+            console.print(f"[green]Associated Genre ID {genre_id} with the book.[/green]")
+            cursor.close()
+        except cx_Oracle.DatabaseError as e:
+            error, = e.args
+            console.print(f"[red]Failed to associate genre: {error.message}[/red]")
+            continue
+
+def add_author(connection):
+    console.print("[bold underline]Add New Author[/bold underline]")
+    author_id = Prompt.ask("Enter Author ID")
+
+    # Check if Author ID already exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Authors WHERE Author_ID = :author_id", author_id=author_id)
+    if cursor.fetchone():
+        console.print(f"[red]Author ID {author_id} already exists. Please use a different Author ID.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    name = Prompt.ask("Enter Name")
+    nationality = Prompt.ask("Enter Nationality")
+    date_of_birth = Prompt.ask("Enter Date of Birth (YYYY-MM-DD)")
+    date_of_death = Prompt.ask("Enter Date of Death (YYYY-MM-DD, leave blank if alive)", default=None)
+    biography = Prompt.ask("Enter Biography", default=None)
+    languages = Prompt.ask("Enter Languages")
+
+    query = """
+    INSERT INTO Authors (Author_ID, Name, Nationality, Date_of_Birth, Date_of_Death, Biography, Languages)
+    VALUES (:author_id, :name, :nationality, TO_DATE(:date_of_birth, 'YYYY-MM-DD'),
+            TO_DATE(:date_of_death, 'YYYY-MM-DD'), :biography, :languages)
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, author_id=author_id, name=name, nationality=nationality,
+                       date_of_birth=date_of_birth, date_of_death=date_of_death if date_of_death else None,
+                       biography=biography, languages=languages)
+        connection.commit()
+        console.print("[green]Author added successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to add author: {error.message}[/red]")
+
+def add_borrower(connection):
+    console.print("[bold underline]Add New Borrower[/bold underline]")
+    borrower_id = Prompt.ask("Enter Borrower ID")
+    user_id = Prompt.ask("Enter User ID")
+
+    # Check if User ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Users WHERE User_ID = :user_id", user_id=user_id)
+    user_exists = cursor.fetchone() is not None
+    cursor.close()
+
+    if not user_exists:
+        console.print(f"[yellow]User ID {user_id} does not exist in Users table.[/yellow]")
+        add_user_prompt = Prompt.ask("Do you want to add a new user? (y/n)", default="y").lower()
+        if add_user_prompt == 'y':
+            add_user(connection, user_id)  # Pass user_id to add_user function
+        else:
+            console.print("[red]Cannot proceed without a valid User ID. Aborting add borrower.[/red]")
+            return
+
+    borrowing_limit = Prompt.ask("Enter Borrowing Limit")
+    amount_payable = Prompt.ask("Enter Amount Payable")
+
+    query = """
+    INSERT INTO Borrowers (Borrower_ID, User_ID, Borrowing_Limit, Amount_Payable)
+    VALUES (:borrower_id, :user_id, :borrowing_limit, :amount_payable)
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, borrower_id=borrower_id, user_id=user_id, borrowing_limit=borrowing_limit, amount_payable=amount_payable)
+        connection.commit()
+        console.print("[green]Borrower added successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to add borrower: {error.message}[/red]")
 
 def add_user(connection, user_id=None):
     console.print("[bold underline]Add New User[/bold underline]")
@@ -331,19 +490,12 @@ def add_user(connection, user_id=None):
     last_name = Prompt.ask("Enter Last Name")
     phone_number = Prompt.ask("Enter Phone Number")
     email = Prompt.ask("Enter Email")
-    while not validators.email(email):
-        console.print("[red]Invalid email format. Please enter a valid email address.[/red]")
-        email = Prompt.ask("Enter Email")
-
     username = Prompt.ask("Enter Username")
     password = Prompt.ask("Enter Password")
     street = Prompt.ask("Enter Street")
     city = Prompt.ask("Enter City")
     state = Prompt.ask("Enter State")
     zip_code = Prompt.ask("Enter ZIP Code")
-    while not validate_zip_code(zip_code):
-        console.print("[red]Invalid ZIP Code format. Please enter a valid US or Canadian ZIP Code.[/red]")
-        zip_code = Prompt.ask("Enter ZIP Code")
 
     query = """
     INSERT INTO Users (User_ID, First_Name, Last_Name, Phone_Number, Email, Username, Password, Street, City, State, ZIP_Code)
@@ -361,10 +513,355 @@ def add_user(connection, user_id=None):
         error, = e.args
         console.print(f"[red]Failed to add user: {error.message}[/red]")
 
-def validate_zip_code(zip_code):
-    us_zip_pattern = r'^\d{5}(?:-\d{4})?$'
-    ca_zip_pattern = r'^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$'
-    return re.match(us_zip_pattern, zip_code) or re.match(ca_zip_pattern, zip_code)
+def add_administrator(connection):
+    console.print("[bold underline]Add New Administrator[/bold underline]")
+    admin_id = Prompt.ask("Enter Admin ID")
+    user_id = Prompt.ask("Enter User ID")
+
+    # Check if User ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Users WHERE User_ID = :user_id", user_id=user_id)
+    user_exists = cursor.fetchone() is not None
+    cursor.close()
+
+    if not user_exists:
+        console.print(f"[yellow]User ID {user_id} does not exist in Users table.[/yellow]")
+        add_user_prompt = Prompt.ask("Do you want to add a new user? (y/n)", default="y").lower()
+        if add_user_prompt == 'y':
+            add_user(connection, user_id)  # Pass user_id to add_user function
+        else:
+            console.print("[red]Cannot proceed without a valid User ID. Aborting add administrator.[/red]")
+            return
+
+    role = Prompt.ask("Enter Role")
+    permissions = Prompt.ask("Enter Permissions")
+    last_login = Prompt.ask("Enter Last Login Date (YYYY-MM-DD)", default=None)
+
+    query = """
+    INSERT INTO Administrators (Admin_ID, User_ID, Role, Permissions, Last_Login)
+    VALUES (:admin_id, :user_id, :role, :permissions, TO_DATE(:last_login, 'YYYY-MM-DD'))
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, admin_id=admin_id, user_id=user_id, role=role,
+                       permissions=permissions, last_login=last_login if last_login else None)
+        connection.commit()
+        console.print("[green]Administrator added successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to add administrator: {error.message}[/red]")
+
+def add_genre(connection):
+    console.print("[bold underline]Add New Genre[/bold underline]")
+    genre_id = Prompt.ask("Enter Genre ID")
+
+    # Check if Genre ID already exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Genres WHERE Genre_ID = :genre_id", genre_id=genre_id)
+    if cursor.fetchone():
+        console.print(f"[red]Genre ID {genre_id} already exists. Please use a different Genre ID.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    title = Prompt.ask("Enter Genre Title")
+    description = Prompt.ask("Enter Genre Description", default=None)
+
+    query = """
+    INSERT INTO Genres (Genre_ID, Title, Description)
+    VALUES (:genre_id, :title, :description)
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, genre_id=genre_id, title=title, description=description)
+        connection.commit()
+        console.print("[green]Genre added successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to add genre: {error.message}[/red]")
+
+def update_record(connection):
+    while True:
+        update_menu = Panel(
+            "\n".join([
+                "Update Records",
+                "----------------------------------------",
+                "1. Update Book",
+                "2. Update Author",
+                "3. Update Borrower",
+                "4. Update User",
+                "5. Update Administrator",         # <--- New Option
+                "6. Update Book Genres",           # <--- New Option
+                "7. Update Book Authors",          # <--- New Option
+                "8. Update Genre",                 # <--- New Option
+                "9. Back to Main Menu",
+                "----------------------------------------"
+            ]),
+            title="Update Menu",
+            subtitle="Choose an option [1-9]",
+            style="bold yellow",
+            box=box.DOUBLE_EDGE
+        )
+        console.print(update_menu)
+        try:
+            choice = IntPrompt.ask("Your choice", default=9)
+        except Exception:
+            console.print("[red]Invalid input. Please enter a number between 1 and 9.[/red]")
+            continue
+
+        console.print("\n")
+        if choice == 1:
+            update_book(connection)
+        elif choice == 2:
+            update_author(connection)
+        elif choice == 3:
+            update_borrower(connection)
+        elif choice == 4:
+            update_user(connection)
+        elif choice == 5:
+            update_administrator(connection)     # <--- New Function
+        elif choice == 6:
+            manage_book_genres(connection)       # <--- New Function
+        elif choice == 7:
+            manage_book_authors(connection)      # <--- New Function
+        elif choice == 8:
+            update_genre(connection)             # <--- New Function
+        elif choice == 9:
+            break
+        else:
+            console.print("[red]Invalid option. Please try again.[/red]")
+
+        pause()
+
+def update_book(connection):
+    console.print("[bold underline]Update Book[/bold underline]")
+    isbn = Prompt.ask("Enter ISBN of the book to update")
+
+    # Fetch current data
+    query = "SELECT Title, Publication_Date, Pages, Copies_Available, Publisher, Admin_ID FROM Books WHERE ISBN = :isbn"
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, isbn=isbn)
+        result = cursor.fetchone()
+        if not result:
+            console.print("[red]Book not found.[/red]")
+            cursor.close()
+            return
+        (current_title, current_pub_date, current_pages, current_copies, current_publisher, current_admin_id) = result
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Error fetching book: {error.message}[/red]")
+        return
+
+    # Prompt for new data
+    title = Prompt.ask(f"Enter new Title (current: {current_title})", default=current_title)
+    publication_date = Prompt.ask(f"Enter new Publication Date (YYYY-MM-DD) (current: {current_pub_date.strftime('%Y-%m-%d')})",
+                                  default=current_pub_date.strftime('%Y-%m-%d'))
+    pages = Prompt.ask(f"Enter new Number of Pages (current: {current_pages})", default=str(current_pages))
+    copies_available = Prompt.ask(f"Enter new Copies Available (current: {current_copies})", default=str(current_copies))
+    publisher = Prompt.ask(f"Enter new Publisher (current: {current_publisher})", default=current_publisher)
+    admin_id = Prompt.ask(f"Enter new Admin ID (current: {current_admin_id})", default=str(current_admin_id))
+
+    # Check if Admin ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]Admin ID {admin_id} does not exist. Please add the administrator first.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    update_query = """
+    UPDATE Books
+    SET Title = :title,
+        Publication_Date = TO_DATE(:publication_date, 'YYYY-MM-DD'),
+        Pages = :pages,
+        Copies_Available = :copies_available,
+        Publisher = :publisher,
+        Admin_ID = :admin_id
+    WHERE ISBN = :isbn
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(update_query, title=title, publication_date=publication_date, pages=pages,
+                       copies_available=copies_available, publisher=publisher, admin_id=admin_id, isbn=isbn)
+        connection.commit()
+        console.print("[green]Book updated successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to update book: {error.message}[/red]")
+
+def update_author(connection):
+    console.print("[bold underline]Update Author[/bold underline]")
+    author_id = Prompt.ask("Enter Author ID to update")
+
+    # Fetch current data
+    query = "SELECT Name, Nationality, Date_of_Birth, Date_of_Death, Biography, Languages FROM Authors WHERE Author_ID = :author_id"
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, author_id=author_id)
+        result = cursor.fetchone()
+        if not result:
+            console.print("[red]Author not found.[/red]")
+            cursor.close()
+            return
+        (current_name, current_nationality, current_dob, current_dod, current_bio, current_languages) = result
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Error fetching author: {error.message}[/red]")
+        return
+
+    # Prompt for new data
+    name = Prompt.ask(f"Enter new Name (current: {current_name})", default=current_name)
+    nationality = Prompt.ask(f"Enter new Nationality (current: {current_nationality})", default=current_nationality)
+    date_of_birth = Prompt.ask(f"Enter new Date of Birth (YYYY-MM-DD) (current: {current_dob.strftime('%Y-%m-%d')})",
+                               default=current_dob.strftime('%Y-%m-%d'))
+    date_of_death = Prompt.ask(f"Enter new Date of Death (YYYY-MM-DD) (current: {current_dod.strftime('%Y-%m-%d') if current_dod else 'N/A'})",
+                               default=current_dod.strftime('%Y-%m-%d') if current_dod else None)
+    biography = Prompt.ask(f"Enter new Biography (current: {current_bio})", default=current_bio if current_bio else "")
+    languages = Prompt.ask(f"Enter new Languages (current: {current_languages})", default=current_languages)
+
+    update_query = """
+    UPDATE Authors
+    SET Name = :name,
+        Nationality = :nationality,
+        Date_of_Birth = TO_DATE(:date_of_birth, 'YYYY-MM-DD'),
+        Date_of_Death = TO_DATE(:date_of_death, 'YYYY-MM-DD'),
+        Biography = :biography,
+        Languages = :languages
+    WHERE Author_ID = :author_id
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(update_query, name=name, nationality=nationality, date_of_birth=date_of_birth,
+                       date_of_death=date_of_death if date_of_death else None,
+                       biography=biography, languages=languages, author_id=author_id)
+        connection.commit()
+        console.print("[green]Author updated successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to update author: {error.message}[/red]")
+
+def update_borrower(connection):
+    console.print("[bold underline]Update Borrower[/bold underline]")
+    borrower_id = Prompt.ask("Enter Borrower ID to update")
+
+    # Fetch current data
+    query = "SELECT User_ID, Borrowing_Limit, Amount_Payable FROM Borrowers WHERE Borrower_ID = :borrower_id"
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, borrower_id=borrower_id)
+        result = cursor.fetchone()
+        if not result:
+            console.print("[red]Borrower not found.[/red]")
+            cursor.close()
+            return
+        current_user_id, current_limit, current_payable = result
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Error fetching borrower: {error.message}[/red]")
+        return
+
+    # Prompt for new data
+    user_id = Prompt.ask(f"Enter new User ID (current: {current_user_id})", default=current_user_id)
+
+    # Check if User ID exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM Users WHERE User_ID = :user_id", user_id=user_id)
+    if cursor.fetchone() is None:
+        console.print(f"[red]User ID {user_id} does not exist. Please add the user first.[/red]")
+        cursor.close()
+        return
+    cursor.close()
+
+    borrowing_limit = Prompt.ask(f"Enter new Borrowing Limit (current: {current_limit})", default=str(current_limit))
+    amount_payable = Prompt.ask(f"Enter new Amount Payable (current: {current_payable})", default=str(current_payable))
+
+    update_query = """
+    UPDATE Borrowers
+    SET User_ID = :user_id,
+        Borrowing_Limit = :borrowing_limit,
+        Amount_Payable = :amount_payable
+    WHERE Borrower_ID = :borrower_id
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(update_query, user_id=user_id, borrowing_limit=borrowing_limit,
+                       amount_payable=amount_payable, borrower_id=borrower_id)
+        connection.commit()
+        console.print("[green]Borrower updated successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to update borrower: {error.message}[/red]")
+
+def update_user(connection):
+    console.print("[bold underline]Update User[/bold underline]")
+    user_id = Prompt.ask("Enter User ID to update")
+
+    # Fetch current data
+    query = "SELECT First_Name, Last_Name, Phone_Number, Email, Username, Password, Street, City, State, ZIP_Code FROM Users WHERE User_ID = :user_id"
+    try:
+        cursor = connection.cursor()
+        cursor.execute(query, user_id=user_id)
+        result = cursor.fetchone()
+        if not result:
+            console.print("[red]User not found.[/red]")
+            cursor.close()
+            return
+        (current_first, current_last, current_phone, current_email, current_username, current_password,
+         current_street, current_city, current_state, current_zip) = result
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Error fetching user: {error.message}[/red]")
+        return
+
+    # Prompt for new data
+    first_name = Prompt.ask(f"Enter new First Name (current: {current_first})", default=current_first)
+    last_name = Prompt.ask(f"Enter new Last Name (current: {current_last})", default=current_last)
+    phone_number = Prompt.ask(f"Enter new Phone Number (current: {current_phone})", default=current_phone)
+    email = Prompt.ask(f"Enter new Email (current: {current_email})", default=current_email)
+    username = Prompt.ask(f"Enter new Username (current: {current_username})", default=current_username)
+    password = Prompt.ask(f"Enter new Password (current: {current_password})", default=current_password)
+    street = Prompt.ask(f"Enter new Street (current: {current_street})", default=current_street)
+    city = Prompt.ask(f"Enter new City (current: {current_city})", default=current_city)
+    state = Prompt.ask(f"Enter new State (current: {current_state})", default=current_state)
+    zip_code = Prompt.ask(f"Enter new ZIP Code (current: {current_zip})", default=current_zip)
+
+    update_query = """
+    UPDATE Users
+    SET First_Name = :first_name,
+        Last_Name = :last_name,
+        Phone_Number = :phone_number,
+        Email = :email,
+        Username = :username,
+        Password = :password,
+        Street = :street,
+        City = :city,
+        State = :state,
+        ZIP_Code = :zip_code
+    WHERE User_ID = :user_id
+    """
+    try:
+        cursor = connection.cursor()
+        cursor.execute(update_query, first_name=first_name, last_name=last_name,
+                       phone_number=phone_number, email=email, username=username, password=password,
+                       street=street, city=city, state=state, zip_code=zip_code,
+                       user_id=user_id)
+        connection.commit()
+        console.print("[green]User updated successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to update user: {error.message}[/red]")
 
 def update_administrator(connection):
     console.print("[bold underline]Update Administrator[/bold underline]")
@@ -400,15 +897,7 @@ def update_administrator(connection):
     cursor.close()
 
     role = Prompt.ask(f"Enter new Role (current: {current_role})", default=current_role)
-    while not validate_role(role):
-        console.print("[red]Invalid role format. Role should be 'Admin', 'Librarian', or 'Manager'.[/red]")
-        role = Prompt.ask("Enter Role")
-
     permissions = Prompt.ask(f"Enter new Permissions (current: {current_permissions})", default=current_permissions)
-    while not validate_permissions(permissions):
-        console.print("[red]Invalid permissions format. Permissions should be a comma-separated list of permissions.[/red]")
-        permissions = Prompt.ask("Enter Permissions")
-
     last_login = Prompt.ask(f"Enter new Last Login Date (YYYY-MM-DD) (current: {current_last_login.strftime('%Y-%m-%d') if current_last_login else 'N/A'})",
                             default=current_last_login.strftime('%Y-%m-%d') if current_last_login else None)
 
@@ -431,268 +920,174 @@ def update_administrator(connection):
         error, = e.args
         console.print(f"[red]Failed to update administrator: {error.message}[/red]")
 
-def validate_role(role):
-    valid_roles = ['Admin', 'Librarian', 'Manager']
-    return role in valid_roles
-
-def validate_permissions(permissions):
-    # Permissions should be a comma-separated list of alphanumeric permissions
-    return all(re.match(r'^\w+$', perm.strip()) for perm in permissions.split(','))
-
-def add_loan(connection):
-    console.print("[bold underline]Add New Loan[/bold underline]")
-    loan_number = Prompt.ask("Enter Loan Number")
-    # Check if Loan Number already exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Loans WHERE Loan_Number = :loan_number", loan_number=loan_number)
-    if cursor.fetchone():
-        console.print(f"[red]Loan Number {loan_number} already exists. Please use a different Loan Number.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    borrower_id = Prompt.ask("Enter Borrower ID")
-    # Check if Borrower ID exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Borrowers WHERE Borrower_ID = :borrower_id", borrower_id=borrower_id)
-    if cursor.fetchone() is None:
-        console.print(f"[red]Borrower ID {borrower_id} does not exist.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    isbn = Prompt.ask("Enter ISBN")
-    # Check if ISBN exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Books WHERE ISBN = :isbn", isbn=isbn)
-    if cursor.fetchone() is None:
-        console.print(f"[red]ISBN {isbn} does not exist.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    admin_id = Prompt.ask("Enter Admin ID")
-    # Check if Admin ID exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
-    if cursor.fetchone() is None:
-        console.print(f"[red]Admin ID {admin_id} does not exist.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    loan_date = Prompt.ask("Enter Loan Date (YYYY-MM-DD)", default=None)
-    due_date = Prompt.ask("Enter Due Date (YYYY-MM-DD)")
-    return_status = Prompt.ask("Enter Return Status (Y/N)", choices=['Y', 'N'], default='N')
-
-    # Validate dates
-    if not due_date:
-        console.print("[red]Due Date is required.[/red]")
-        return
-
-    if loan_date:
-        if not validate_date_format(loan_date):
-            console.print("[red]Invalid Loan Date format.[/red]")
-            return
-    else:
-        loan_date = None
-
-    if not validate_date_format(due_date):
-        console.print("[red]Invalid Due Date format.[/red]")
-        return
-
-    if loan_date and not validate_date_order(loan_date, due_date):
-        console.print("[red]Due Date cannot be earlier than Loan Date.[/red]")
-        return
-
-    query = """
-    INSERT INTO Loans (Loan_Number, Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Status, Admin_ID)
-    VALUES (:loan_number, :borrower_id, :isbn, TO_DATE(:loan_date, 'YYYY-MM-DD'), TO_DATE(:due_date, 'YYYY-MM-DD'), :return_status, :admin_id)
-    """
-    try:
-        cursor = connection.cursor()
-        cursor.execute(query, loan_number=loan_number, borrower_id=borrower_id, isbn=isbn,
-                       loan_date=loan_date, due_date=due_date, return_status=return_status, admin_id=admin_id)
-        connection.commit()
-        console.print("[green]Loan added successfully.[/green]")
-        cursor.close()
-    except cx_Oracle.DatabaseError as e:
-        error, = e.args
-        console.print(f"[red]Failed to add loan: {error.message}[/red]")
-
-def validate_date_format(date_text):
-    try:
-        return bool(re.match(r'^\d{4}-\d{2}-\d{2}$', date_text))
-    except ValueError:
-        return False
-
-def validate_date_order(start_date, end_date):
-    from datetime import datetime
-    start = datetime.strptime(start_date, '%Y-%m-%d')
-    end = datetime.strptime(end_date, '%Y-%m-%d')
-    return end >= start
-
-def update_record(connection):
-    while True:
-        update_menu = Panel(
-            "\n".join([
-                "Update Records",
-                "----------------------------------------",
-                "1. Update Book",
-                "2. Update Author",
-                "3. Update Borrower",
-                "4. Update User",
-                "5. Update Administrator",
-                "6. Update Book Genres",
-                "7. Update Book Authors",
-                "8. Update Genre",
-                "9. Update Loan",                 # <--- New Option
-                "10. Back to Main Menu",
-                "----------------------------------------"
-            ]),
-            title="Update Menu",
-            subtitle="Choose an option [1-10]",
-            style="bold yellow",
-            box=box.DOUBLE_EDGE
-        )
-        console.print(update_menu)
-        try:
-            choice = IntPrompt.ask("Your choice", default=10)
-        except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 10.[/red]")
-            continue
-
-        console.print("\n")
-        if choice == 1:
-            update_book(connection)
-        elif choice == 2:
-            update_author(connection)
-        elif choice == 3:
-            update_borrower(connection)
-        elif choice == 4:
-            update_user(connection)
-        elif choice == 5:
-            update_administrator(connection)
-        elif choice == 6:
-            manage_book_genres(connection)
-        elif choice == 7:
-            manage_book_authors(connection)
-        elif choice == 8:
-            update_genre(connection)
-        elif choice == 9:
-            update_loan(connection)           # <--- New Function
-        elif choice == 10:
-            break
-        else:
-            console.print("[red]Invalid option. Please try again.[/red]")
-
-        pause()
-
-def update_loan(connection):
-    console.print("[bold underline]Update Loan[/bold underline]")
-    loan_number = Prompt.ask("Enter Loan Number to update")
+def update_genre(connection):
+    console.print("[bold underline]Update Genre[/bold underline]")
+    genre_id = Prompt.ask("Enter Genre ID to update")
 
     # Fetch current data
-    query = "SELECT Borrower_ID, ISBN, Loan_Date, Due_Date, Return_Date, Fine_Amount, Return_Status, Admin_ID FROM Loans WHERE Loan_Number = :loan_number"
+    query = "SELECT Title, Description FROM Genres WHERE Genre_ID = :genre_id"
     try:
         cursor = connection.cursor()
-        cursor.execute(query, loan_number=loan_number)
+        cursor.execute(query, genre_id=genre_id)
         result = cursor.fetchone()
         if not result:
-            console.print("[red]Loan not found.[/red]")
+            console.print("[red]Genre not found.[/red]")
             cursor.close()
             return
-        (current_borrower_id, current_isbn, current_loan_date, current_due_date, current_return_date,
-         current_fine_amount, current_return_status, current_admin_id) = result
+        current_title, current_description = result
         cursor.close()
     except cx_Oracle.DatabaseError as e:
         error, = e.args
-        console.print(f"[red]Error fetching loan: {error.message}[/red]")
+        console.print(f"[red]Error fetching genre: {error.message}[/red]")
         return
 
     # Prompt for new data
-    borrower_id = Prompt.ask(f"Enter new Borrower ID (current: {current_borrower_id})", default=str(current_borrower_id))
-    # Check if Borrower ID exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Borrowers WHERE Borrower_ID = :borrower_id", borrower_id=borrower_id)
-    if cursor.fetchone() is None:
-        console.print(f"[red]Borrower ID {borrower_id} does not exist.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    isbn = Prompt.ask(f"Enter new ISBN (current: {current_isbn})", default=current_isbn)
-    # Check if ISBN exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Books WHERE ISBN = :isbn", isbn=isbn)
-    if cursor.fetchone() is None:
-        console.print(f"[red]ISBN {isbn} does not exist.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    loan_date = Prompt.ask(f"Enter new Loan Date (YYYY-MM-DD) (current: {current_loan_date.strftime('%Y-%m-%d') if current_loan_date else 'N/A'})",
-                           default=current_loan_date.strftime('%Y-%m-%d') if current_loan_date else None)
-    due_date = Prompt.ask(f"Enter new Due Date (YYYY-MM-DD) (current: {current_due_date.strftime('%Y-%m-%d') if current_due_date else 'N/A'})",
-                          default=current_due_date.strftime('%Y-%m-%d') if current_due_date else None)
-    return_date = Prompt.ask(f"Enter new Return Date (YYYY-MM-DD) (current: {current_return_date.strftime('%Y-%m-%d') if current_return_date else 'N/A'})",
-                             default=current_return_date.strftime('%Y-%m-%d') if current_return_date else None)
-    fine_amount = Prompt.ask(f"Enter new Fine Amount (current: {current_fine_amount})", default=str(current_fine_amount))
-    return_status = Prompt.ask(f"Enter new Return Status (Y/N) (current: {current_return_status})",
-                               choices=['Y', 'N'], default=current_return_status)
-    admin_id = Prompt.ask(f"Enter new Admin ID (current: {current_admin_id})", default=str(current_admin_id))
-    # Check if Admin ID exists
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
-    if cursor.fetchone() is None:
-        console.print(f"[red]Admin ID {admin_id} does not exist.[/red]")
-        cursor.close()
-        return
-    cursor.close()
-
-    # Validate dates
-    if loan_date and not validate_date_format(loan_date):
-        console.print("[red]Invalid Loan Date format.[/red]")
-        return
-    if due_date and not validate_date_format(due_date):
-        console.print("[red]Invalid Due Date format.[/red]")
-        return
-    if return_date and not validate_date_format(return_date):
-        console.print("[red]Invalid Return Date format.[/red]")
-        return
-    if loan_date and due_date and not validate_date_order(loan_date, due_date):
-        console.print("[red]Due Date cannot be earlier than Loan Date.[/red]")
-        return
-    if loan_date and return_date and not validate_date_order(loan_date, return_date):
-        console.print("[red]Return Date cannot be earlier than Loan Date.[/red]")
-        return
+    title = Prompt.ask(f"Enter new Title (current: {current_title})", default=current_title)
+    description = Prompt.ask(f"Enter new Description (current: {current_description})", default=current_description)
 
     update_query = """
-    UPDATE Loans
-    SET Borrower_ID = :borrower_id,
-        ISBN = :isbn,
-        Loan_Date = TO_DATE(:loan_date, 'YYYY-MM-DD'),
-        Due_Date = TO_DATE(:due_date, 'YYYY-MM-DD'),
-        Return_Date = TO_DATE(:return_date, 'YYYY-MM-DD'),
-        Fine_Amount = :fine_amount,
-        Return_Status = :return_status,
-        Admin_ID = :admin_id
-    WHERE Loan_Number = :loan_number
+    UPDATE Genres
+    SET Title = :title,
+        Description = :description
+    WHERE Genre_ID = :genre_id
     """
     try:
         cursor = connection.cursor()
-        cursor.execute(update_query, borrower_id=borrower_id, isbn=isbn,
-                       loan_date=loan_date if loan_date else None,
-                       due_date=due_date if due_date else None,
-                       return_date=return_date if return_date else None,
-                       fine_amount=fine_amount, return_status=return_status,
-                       admin_id=admin_id, loan_number=loan_number)
+        cursor.execute(update_query, title=title, description=description, genre_id=genre_id)
         connection.commit()
-        console.print("[green]Loan updated successfully.[/green]")
+        console.print("[green]Genre updated successfully.[/green]")
         cursor.close()
     except cx_Oracle.DatabaseError as e:
         error, = e.args
-        console.print(f"[red]Failed to update loan: {error.message}[/red]")
+        console.print(f"[red]Failed to update genre: {error.message}[/red]")
+
+def manage_book_genres(connection):
+    console.print("[bold underline]Manage Book Genres[/bold underline]")
+    isbn = Prompt.ask("Enter ISBN of the book")
+
+    # Check if book exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT Title FROM Books WHERE ISBN = :isbn", isbn=isbn)
+    result = cursor.fetchone()
+    if not result:
+        console.print("[red]Book not found.[/red]")
+        cursor.close()
+        return
+    book_title = result[0]
+    cursor.close()
+
+    console.print(f"Managing genres for book: [green]{book_title}[/green]")
+
+    while True:
+        action = Prompt.ask("Do you want to [a]dd or [r]emove a genre? (enter 'q' to quit)", choices=['a', 'r', 'q'])
+        if action == 'q':
+            break
+        elif action == 'a':
+            genre_id = Prompt.ask("Enter Genre ID to associate with this book")
+            # Check if genre exists
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM Genres WHERE Genre_ID = :genre_id", genre_id=genre_id)
+            if cursor.fetchone() is None:
+                console.print(f"[red]Genre ID {genre_id} does not exist. Please add the genre first.[/red]")
+                cursor.close()
+                continue
+            cursor.close()
+            # Insert into BookGenre
+            try:
+                cursor = connection.cursor()
+                cursor.execute("INSERT INTO BookGenre (ISBN, Genre_ID) VALUES (:isbn, :genre_id)", isbn=isbn, genre_id=genre_id)
+                connection.commit()
+                console.print(f"[green]Associated Genre ID {genre_id} with the book.[/green]")
+                cursor.close()
+            except cx_Oracle.DatabaseError as e:
+                error, = e.args
+                console.print(f"[red]Failed to associate genre: {error.message}[/red]")
+                continue
+        elif action == 'r':
+            genre_id = Prompt.ask("Enter Genre ID to remove from this book")
+            # Check if association exists
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM BookGenre WHERE ISBN = :isbn AND Genre_ID = :genre_id", isbn=isbn, genre_id=genre_id)
+            if cursor.fetchone() is None:
+                console.print(f"[red]Genre ID {genre_id} is not associated with this book.[/red]")
+                cursor.close()
+                continue
+            cursor.close()
+            # Delete from BookGenre
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM BookGenre WHERE ISBN = :isbn AND Genre_ID = :genre_id", isbn=isbn, genre_id=genre_id)
+                connection.commit()
+                console.print(f"[green]Removed Genre ID {genre_id} from the book.[/green]")
+                cursor.close()
+            except cx_Oracle.DatabaseError as e:
+                error, = e.args
+                console.print(f"[red]Failed to remove genre: {error.message}[/red]")
+                continue
+
+def manage_book_authors(connection):
+    console.print("[bold underline]Manage Book Authors[/bold underline]")
+    isbn = Prompt.ask("Enter ISBN of the book")
+
+    # Check if book exists
+    cursor = connection.cursor()
+    cursor.execute("SELECT Title FROM Books WHERE ISBN = :isbn", isbn=isbn)
+    result = cursor.fetchone()
+    if not result:
+        console.print("[red]Book not found.[/red]")
+        cursor.close()
+        return
+    book_title = result[0]
+    cursor.close()
+
+    console.print(f"Managing authors for book: [green]{book_title}[/green]")
+
+    while True:
+        action = Prompt.ask("Do you want to [a]dd or [r]emove an author? (enter 'q' to quit)", choices=['a', 'r', 'q'])
+        if action == 'q':
+            break
+        elif action == 'a':
+            author_id = Prompt.ask("Enter Author ID to associate with this book")
+            # Check if author exists
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM Authors WHERE Author_ID = :author_id", author_id=author_id)
+            if cursor.fetchone() is None:
+                console.print(f"[red]Author ID {author_id} does not exist. Please add the author first.[/red]")
+                cursor.close()
+                continue
+            cursor.close()
+            # Insert into BookAuthor
+            try:
+                cursor = connection.cursor()
+                cursor.execute("INSERT INTO BookAuthor (ISBN, Author_ID) VALUES (:isbn, :author_id)", isbn=isbn, author_id=author_id)
+                connection.commit()
+                console.print(f"[green]Associated Author ID {author_id} with the book.[/green]")
+                cursor.close()
+            except cx_Oracle.DatabaseError as e:
+                error, = e.args
+                console.print(f"[red]Failed to associate author: {error.message}[/red]")
+                continue
+        elif action == 'r':
+            author_id = Prompt.ask("Enter Author ID to remove from this book")
+            # Check if association exists
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM BookAuthor WHERE ISBN = :isbn AND Author_ID = :author_id", isbn=isbn, author_id=author_id)
+            if cursor.fetchone() is None:
+                console.print(f"[red]Author ID {author_id} is not associated with this book.[/red]")
+                cursor.close()
+                continue
+            cursor.close()
+            # Delete from BookAuthor
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM BookAuthor WHERE ISBN = :isbn AND Author_ID = :author_id", isbn=isbn, author_id=author_id)
+                connection.commit()
+                console.print(f"[green]Removed Author ID {author_id} from the book.[/green]")
+                cursor.close()
+            except cx_Oracle.DatabaseError as e:
+                error, = e.args
+                console.print(f"[red]Failed to remove author: {error.message}[/red]")
+                continue
 
 def delete_record(connection):
     while True:
@@ -704,22 +1099,21 @@ def delete_record(connection):
                 "2. Delete Author",
                 "3. Delete Borrower",
                 "4. Delete User",
-                "5. Delete Administrator",
-                "6. Delete Genre",
-                "7. Delete Loan",            # <--- New Option
-                "8. Back to Main Menu",
+                "5. Delete Administrator",   # <--- New Option
+                "6. Delete Genre",          # <--- New Option
+                "7. Back to Main Menu",
                 "----------------------------------------"
             ]),
             title="Delete Menu",
-            subtitle="Choose an option [1-8]",
+            subtitle="Choose an option [1-7]",
             style="bold red",
             box=box.DOUBLE_EDGE
         )
         console.print(delete_menu)
         try:
-            choice = IntPrompt.ask("Your choice", default=8)
+            choice = IntPrompt.ask("Your choice", default=7)
         except Exception:
-            console.print("[red]Invalid input. Please enter a number between 1 and 8.[/red]")
+            console.print("[red]Invalid input. Please enter a number between 1 and 7.[/red]")
             continue
 
         console.print("\n")
@@ -732,34 +1126,162 @@ def delete_record(connection):
         elif choice == 4:
             delete_user(connection)
         elif choice == 5:
-            delete_administrator(connection)
+            delete_administrator(connection)  # <--- New Function
         elif choice == 6:
-            delete_genre(connection)
+            delete_genre(connection)          # <--- New Function
         elif choice == 7:
-            delete_loan(connection)     # <--- New Function
-        elif choice == 8:
             break
         else:
             console.print("[red]Invalid option. Please try again.[/red]")
 
         pause()
 
-def delete_loan(connection):
-    console.print("[bold underline]Delete Loan[/bold underline]")
-    loan_number = Prompt.ask("Enter Loan Number to delete")
+def delete_book(connection):
+    console.print("[bold underline]Delete Book[/bold underline]")
+    isbn = Prompt.ask("Enter ISBN of the book to delete")
 
+    # Delete from BookAuthor and BookGenre first due to foreign key constraints
     try:
         cursor = connection.cursor()
-        cursor.execute("DELETE FROM Loans WHERE Loan_Number = :loan_number", loan_number=loan_number)
+        # Delete related loans first if any
+        cursor.execute("DELETE FROM Loans WHERE ISBN = :isbn", isbn=isbn)
+        # Delete from BookAuthor
+        cursor.execute("DELETE FROM BookAuthor WHERE ISBN = :isbn", isbn=isbn)
+        # Delete from BookGenre
+        cursor.execute("DELETE FROM BookGenre WHERE ISBN = :isbn", isbn=isbn)
+        # Finally, delete from Books
+        cursor.execute("DELETE FROM Books WHERE ISBN = :isbn", isbn=isbn)
         if cursor.rowcount == 0:
-            console.print("[red]No loan found with the provided Loan Number.[/red]")
+            console.print("[red]No book found with the provided ISBN.[/red]")
         else:
             connection.commit()
-            console.print("[green]Loan deleted successfully.[/green]")
+            console.print("[green]Book and related records deleted successfully.[/green]")
         cursor.close()
     except cx_Oracle.DatabaseError as e:
         error, = e.args
-        console.print(f"[red]Failed to delete loan: {error.message}[/red]")
+        console.print(f"[red]Failed to delete book: {error.message}[/red]")
+
+def delete_author(connection):
+    console.print("[bold underline]Delete Author[/bold underline]")
+    author_id = Prompt.ask("Enter Author ID to delete")
+
+    # Delete from BookAuthor first due to foreign key constraints
+    try:
+        cursor = connection.cursor()
+        # Delete related BookAuthor entries
+        cursor.execute("DELETE FROM BookAuthor WHERE Author_ID = :author_id", author_id=author_id)
+        # Finally, delete from Authors
+        cursor.execute("DELETE FROM Authors WHERE Author_ID = :author_id", author_id=author_id)
+        if cursor.rowcount == 0:
+            console.print("[red]No author found with the provided ID.[/red]")
+        else:
+            connection.commit()
+            console.print("[green]Author and related records deleted successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to delete author: {error.message}[/red]")
+
+def delete_borrower(connection):
+    console.print("[bold underline]Delete Borrower[/bold underline]")
+    borrower_id = Prompt.ask("Enter Borrower ID to delete")
+
+    # Delete from Loans first due to foreign key constraints
+    try:
+        cursor = connection.cursor()
+        # Delete related Loans
+        cursor.execute("DELETE FROM Loans WHERE Borrower_ID = :borrower_id", borrower_id=borrower_id)
+        # Delete from Borrowers
+        cursor.execute("DELETE FROM Borrowers WHERE Borrower_ID = :borrower_id", borrower_id=borrower_id)
+        if cursor.rowcount == 0:
+            console.print("[red]No borrower found with the provided ID.[/red]")
+        else:
+            connection.commit()
+            console.print("[green]Borrower and related records deleted successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to delete borrower: {error.message}[/red]")
+
+def delete_user(connection):
+    console.print("[bold underline]Delete User[/bold underline]")
+    user_id = Prompt.ask("Enter User ID to delete")
+
+    # Check if User is associated with Borrower or Administrator
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Borrowers WHERE User_ID = :user_id", user_id=user_id)
+        borrower_exists = cursor.fetchone() is not None
+        cursor.execute("SELECT * FROM Administrators WHERE User_ID = :user_id", user_id=user_id)
+        admin_exists = cursor.fetchone() is not None
+        cursor.close()
+
+        if borrower_exists or admin_exists:
+            console.print("[red]Cannot delete user associated with Borrower or Administrator records.[/red]")
+            return
+
+        # Safe to delete the user
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM Users WHERE User_ID = :user_id", user_id=user_id)
+        if cursor.rowcount == 0:
+            console.print("[red]No user found with the provided ID.[/red]")
+        else:
+            connection.commit()
+            console.print("[green]User deleted successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to delete user: {error.message}[/red]")
+
+def delete_administrator(connection):
+    console.print("[bold underline]Delete Administrator[/bold underline]")
+    admin_id = Prompt.ask("Enter Admin ID to delete")
+
+    # Delete from Administrators
+    try:
+        cursor = connection.cursor()
+        # Check if admin has associated books or loans
+        cursor.execute("SELECT * FROM Books WHERE Admin_ID = :admin_id", admin_id=admin_id)
+        books_managed = cursor.fetchone() is not None
+        cursor.execute("SELECT * FROM Loans WHERE Admin_ID = :admin_id", admin_id=admin_id)
+        loans_processed = cursor.fetchone() is not None
+
+        if books_managed or loans_processed:
+            console.print("[red]Cannot delete administrator associated with books or loans.[/red]")
+            cursor.close()
+            return
+
+        cursor.execute("DELETE FROM Administrators WHERE Admin_ID = :admin_id", admin_id=admin_id)
+        if cursor.rowcount == 0:
+            console.print("[red]No administrator found with the provided ID.[/red]")
+        else:
+            connection.commit()
+            console.print("[green]Administrator deleted successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to delete administrator: {error.message}[/red]")
+
+def delete_genre(connection):
+    console.print("[bold underline]Delete Genre[/bold underline]")
+    genre_id = Prompt.ask("Enter Genre ID to delete")
+
+    # Delete from BookGenre first due to foreign key constraints
+    try:
+        cursor = connection.cursor()
+        # Delete related BookGenre entries
+        cursor.execute("DELETE FROM BookGenre WHERE Genre_ID = :genre_id", genre_id=genre_id)
+        # Finally, delete from Genres
+        cursor.execute("DELETE FROM Genres WHERE Genre_ID = :genre_id", genre_id=genre_id)
+        if cursor.rowcount == 0:
+            console.print("[red]No genre found with the provided ID.[/red]")
+        else:
+            connection.commit()
+            console.print("[green]Genre and related records deleted successfully.[/green]")
+        cursor.close()
+    except cx_Oracle.DatabaseError as e:
+        error, = e.args
+        console.print(f"[red]Failed to delete genre: {error.message}[/red]")
 
 # Function to display messages between operations
 def pause():
@@ -791,7 +1313,6 @@ def show_menu():
             "17. Update Records",
             "18. Delete Records",
             "19. Relational Algebra",
-            "20. Exit",
             "----------------------------------------"
         ]),
         title="Main Menu",
@@ -852,11 +1373,11 @@ def main():
         elif choice == 15:
             search_module.search_records(connection)  # <--- Modified to use imported module
         elif choice == 16:
-            add_record(connection)
+            add_record(connection)                   # <--- New Option
         elif choice == 17:
-            update_record(connection)
+            update_record(connection)                # <--- New Option
         elif choice == 18:
-            delete_record(connection)
+            delete_record(connection)                # <--- New Option
         elif choice == 19:
             ra_module.ra_operations(connection)
         elif choice == 20:
