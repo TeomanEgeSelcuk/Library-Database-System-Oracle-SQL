@@ -381,7 +381,7 @@ The Library Database System project successfully developed a robust and scalable
 4. **Configure Shell Scripts:**
    - Ensure shell scripts have execute permissions.
      ```bash
-     chmod +x shell_menu.sh
+     chmod +x sql_commands.sh
      ```
 
 5. **Set Up Python Environment:**
@@ -402,7 +402,7 @@ The Library Database System project successfully developed a robust and scalable
 
 2. **Run the Shell Script:**
    ```bash
-   ./shell_menu.sh
+   ./sql_commands.sh
    ```
 
 3. **Select an Option:**
@@ -417,7 +417,7 @@ The Library Database System project successfully developed a robust and scalable
 
 2. **Run the Python Script:**
    ```bash
-   python3 python_cli.py
+   python3 sql_commands.py
    ```
 
 3. **Select an Option:**
